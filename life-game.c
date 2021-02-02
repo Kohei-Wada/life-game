@@ -18,40 +18,7 @@ pthread_mutex_t mutex;
 
 enum {DEAD=0, ALIVE, WALL_V, WALL_H};
 
-
-typedef struct {
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
-    int count, color, n_threads;
-} pth_barrier_t;
-
-pth_barrier_t barrier;
-
-
-void pth_barrier_init(pth_barrier_t *barrier, int n_threads)
-{
-    pthread_mutex_init(&barrier->mutex, NULL);
-    pthread_cond_init(&barrier->cond, NULL);
-    barrier->count = barrier->n_threads = n_threads;
-    barrier->color = RED;
-}
-
-
-void pth_barrier(pth_barrier_t *barrier)
-{
-    pthread_mutex_lock(&barrier->mutex);
-    int kolor = barrier->color;
-
-    if ((--(barrier->count))) {
-        while (kolor == barrier->color) pthread_cond_wait(&barrier->cond, &barrier->mutex);
-    }
-    else {
-        barrier->count = barrier->n_threads;
-        barrier->color = !barrier->color;
-        pthread_cond_broadcast(&barrier->cond);
-    }
-    pthread_mutex_unlock(&barrier->mutex);
-}
+pthread_barrier_t B;
 
 
 
@@ -138,21 +105,18 @@ void* next_cells(void *arg)
 
             }
         }
-        pth_barrier(&barrier);
+        pthread_barrier_wait(&B);
         for (x = tnum; x < size_x; x += N_THREADS)
             memcpy(current[x], next[x], sizeof(int)*size_y);
 
-        pth_barrier(&barrier);
+        pthread_barrier_wait(&B);
         if (tnum == 0) {
             pthread_cond_signal(&cond);
             usleep(50000);
         }
-        pth_barrier(&barrier);
+        pthread_barrier_wait(&B);
 
     }
-
-
-
     return NULL;
 }
 
@@ -182,7 +146,7 @@ int main(void)
 
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
-    pth_barrier_init(&barrier, N_THREADS);
+    pthread_barrier_init(&B, NULL, N_THREADS);
 
     current = init_stage(size_x, size_y);
     next    = init_stage(size_x, size_y);
