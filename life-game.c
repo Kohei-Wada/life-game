@@ -114,7 +114,6 @@ void* next_cells(void *arg)
             pthread_cond_signal(&cond);
             usleep(50000);
         }
-        pthread_barrier_wait(&B);
 
     }
     return NULL;
